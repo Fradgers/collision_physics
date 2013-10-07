@@ -28,6 +28,8 @@ GLfloat colors[COLOR_COUNT][3] = {
     { 0,1,0 },
     { 0,0,1 },
     { 1,0,1 },
+    { 1,1,0 },
+    { 0,1,1 },
 };
 
 void draw_vector( const Vec3& p, const Vec3& v, Color color )
@@ -102,7 +104,8 @@ void Object::draw() const
     glRotatef( angle, 0,0,-1 );
 
     glColor3fv( colors[ color ] );
-    glBegin( GL_QUADS );
+    ///glBegin( GL_QUADS );
+    glBegin( GL_LINE_LOOP );
         glVertex3f( -w2, h2, 0 );
         glVertex3f( -w2, -h2, 0 );
         glVertex3f( w2, -h2, 0 );
@@ -176,3 +179,15 @@ Collision_Volume Block::collision_volume()
     return Collision_Volume( axes, vertices );
 }
 
+float tyre_lateral_resistance( float angle_degrees, float weight_newtons )
+{
+   // std::cout << "angle_degrees: " << angle_degrees << std::endl;
+    if ( angle_degrees <= 3.0f && angle_degrees >= -3.0f )
+    {
+        return angle_degrees * 0.4f * weight_newtons;
+    }
+    else
+    {
+        return ( -0.007f * angle_degrees + 1.221f ) * weight_newtons;
+    }
+}

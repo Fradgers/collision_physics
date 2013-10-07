@@ -26,10 +26,12 @@ int main( int argc, char** argv )
 
         car.update(0.01f);
 
+        std::cout << "\n************************************" << std::endl;
+
         if ( glfwGetKey( GLFW_KEY_UP )) { std::cout << "Accelerating." << std::endl; car.accelerate(); }
         if ( glfwGetKey( GLFW_KEY_DOWN )) { std::cout << "Braking." << std::endl; car.brake(); }
-        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(5.75f);
-        if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-5.75f);
+        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(2.0f);
+        if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-2.0f);
 
         obj.draw();
         car.draw();
@@ -45,4 +47,7 @@ int main( int argc, char** argv )
 
         glfwSwapBuffers();
     }
+
+    ///while ( ! glfwGetKey( GLFW_KEY_SPACE ) )
+    { ; }
 }
