@@ -15,7 +15,9 @@ int main( int argc, char** argv )
     using namespace boost::assign;
 
     Object obj( Vec3( 0, 0, depth ), Vec3( 2, 2, 0 ), 30.0f, Red );
-    Car2D car( Vec3( 4, 0, depth ), Vec3( 1, 3, 0 ) );
+    Car2D car( Vec3( -2, -2, depth ), Vec3( 1, 3, 0 ) );
+
+    std::vector<Vec3> positions;
 
     while ( ! glfwGetKey( GLFW_KEY_ESC ) )
     {
@@ -24,6 +26,8 @@ int main( int argc, char** argv )
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity();
 
+        obj.draw();
+        car.draw();
         car.update(0.01f);
 
         std::cout << "\n************************************" << std::endl;
@@ -33,8 +37,18 @@ int main( int argc, char** argv )
         if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(2.0f);
         if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-2.0f);
 
-        obj.draw();
-        car.draw();
+
+        positions.push_back( car.position() );
+
+        glPushMatrix();
+
+        glColor3f( 1.0f, 1.0f, 1.0f );
+        glBegin( GL_LINES );
+            BOOST_FOREACH( const Vec3& position, positions )
+                glVertex3f( position.x, position.y, -19.9f );
+        glEnd();
+
+        glPopMatrix();
 
         if ( obj.collision_volume().intersects(
             car.collision_volume()

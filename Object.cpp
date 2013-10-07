@@ -23,17 +23,20 @@ std::ostream& threshold_print( std::ostream& stream,  float delta, float value )
 }
 
 GLfloat colors[COLOR_COUNT][3] = {
-    { 1,1,1 },
-    { 1,0,0 },
-    { 0,1,0 },
-    { 0,0,1 },
-    { 1,0,1 },
-    { 1,1,0 },
-    { 0,1,1 },
+    { 1, 1, 1 },
+    { 1, 0, 0 },
+    { 0, 1, 0 },
+    { 0, 0, 1 },
+    { 0, 1, 1 },
+    { 1, 0, 1 },
+    { 1, 1, 0 },
+    { 1,.5f, 0 },
 };
 
-void draw_vector( const Vec3& p, const Vec3& v, Color color )
+void draw_vector( const Vec3& p, const Vec3& vec, Color color )
 {
+    Vec3 v = vec * 0.1f;
+
     glColor3fv( colors[ color ] );
     glBegin( GL_LINE_LOOP );
         glVertex3f( p.x, p.y, p.z );
@@ -101,7 +104,7 @@ void Object::draw() const
     glPushMatrix();
 
     glTranslatef( position().x, position().y, position().z );
-    glRotatef( angle, 0,0,-1 );
+    glRotatef( angle_degrees, 0,0,-1 );
 
     glColor3fv( colors[ color ] );
     ///glBegin( GL_QUADS );
@@ -119,8 +122,8 @@ Collision_Volume Object::collision_volume()
 {
     std::vector<Vec3> vertices;
 
-    Vec3 X( cos( deg_to_rad * angle ), -sin( deg_to_rad * angle ), 0 );
-    Vec3 Y( sin( deg_to_rad * angle ), cos( deg_to_rad * angle ), 0 );
+    Vec3 X( cos( deg_to_rad * angle_degrees ), -sin( deg_to_rad * angle_degrees ), 0 );
+    Vec3 Y( sin( deg_to_rad * angle_degrees ), cos( deg_to_rad * angle_degrees ), 0 );
 
     X *= dimensions.x / 2;
     Y *= dimensions.y / 2;
