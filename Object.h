@@ -4,7 +4,12 @@
 #include "OpenGL.h"
 #include "Vec3.h"
 
+
 enum Color { White = 0, Red, Green, Blue, Purple, COLOR_COUNT };
+
+void draw_vector( const Vec3& p, const Vec3& v, Color color = White );
+
+
 
 #include <vector>
 #include <limits>
@@ -83,7 +88,7 @@ public:
     { ; }
 
     virtual Collision_Volume collision_volume();
-    void draw() const;
+    virtual void draw() const;
     Vec3 position() const { return pos; }
     void move_by( const Vec3& vec ) { pos += vec; }
 
@@ -118,114 +123,21 @@ std::ostream& threshold_print( std::ostream& stream, float delta, float value, c
 std::ostream& threshold_print( std::ostream& stream, float delta, float value );
 
 
-enum Power { UNPOWERED = 0, POWERED };
-
-class Wheel {
-public:
-    Wheel( Vec3 offset, float angle )
-    :   torque(0),
-        angular_velocity(0),
-        wheel_radius(0.5f),
-        wheel_inertia(
-            0.05f/12.0f * ( 3 * wheel_radius * wheel_radius) )
-    { ; }
-
-    void apply_torque( float torque_component )
-    {
-        torque += torque_component;
-    }
-
-    float resultant_force_on_chassis( float ground_speed, float mass, float timestep )
-    {
-        //std::cout << "Ratio: " << mass << " : " << wheel_inertia / wheel_radius << std::endl;
-
-        // wheel is pointing towards positive Y
-        //Vec3 forward_vector( 0,1,0 );
-        angular_velocity *= 0.9f;
-
-        float wheel_speed = /*forward_vector*/1 * angular_velocity * wheel_radius;
-        float relative_velocity = ground_speed - wheel_speed;
-
-        // if ground is moving faster than wheels are turning, relative_velocity is positive
-        // if ground is moving slower than wheels are turning, relative_velocity is negative
-
-        ///float friction = -relative_velocity;
-        float static_friction_coefficient = 1.0f;
-        float max_friction = static_friction_coefficient * mass * 9.8f;
-        float friction = 0.0f;
-
-        /// TODO: use torque to calculate opposing friction?
-
-        friction = relative_velocity;
-       /* if ( relative_velocity >= 0 )
-        {
-            friction = 100 * relative_velocity;//std::min( relative_velocity, max_friction );
-        }
-        else
-        {
-            friction = -1000;//std::max( relative_velocity, -max_friction );
-        }*/
-
-        // if ground is moving faster than wheels are turning, friction accelerates the wheels
-        // if ground is moving slower than wheels are turning, friction decelerates the wheels
-
-        if ( torque < friction * wheel_radius )
-            torque -= friction * wheel_radius;
-
-        // F=MA
-        float angular_acceleration = torque / wheel_inertia;
-
-        angular_velocity += angular_acceleration * timestep;
-
-        std::cout << std::setprecision(4);
-        std::cout << "Torque: ";
-        threshold_print( std::cout, 0.01f, torque );
-        std::cout << std::endl;
-        std::cout << "Speed: " << "Wheel(";
-        threshold_print( std::cout, 0.01f, wheel_speed );
-        std::cout << ", ";
-        threshold_print( std::cout, 0.01f, angular_velocity * wheel_radius );
-        std::cout << "), Ground(";
-        threshold_print( std::cout, 0.01f, ground_speed );
-        std::cout << ")" << std::endl;
-
-        std::cout << "Result: RelVel(";
-        threshold_print( std::cout, 0.1f, relative_velocity );
-        std::cout << ") Friction(";
-        threshold_print( std::cout, 0.1f, -friction );
-        std::cout << ")" << std::endl;
-
-        if ( friction == max_friction )
-            std::cout << "+max_friction (wheelspin)" << std::endl;
-        if ( friction == -max_friction )
-            std::cout << "-max_friction (wheelspin)" << std::endl;
-
-        torque = 0;
-
-        // friction is the force which accelerates or decelerates the car as a whole
-        return -friction;
-    }
-
-private:
-    float torque;
-    float angular_velocity;
-    float wheel_radius;
-    float wheel_inertia;
-};
-
 class UniCar : public Object {
 public:
     UniCar( Vec3 p, Vec3 d )
     :   Object( p, d, 0.0f, Purple ),
-        wheel( d/2, 0.0f ),
         mass( 5.0f ), // kg
-        velocity( 0 )
+        velocity( 0 ),
+        forces( 0 )
     { ; }
 
     void update( float timestep )
     {
-        float resultant_force = wheel.resultant_force_on_chassis( velocity, mass, timestep );
-        float acceleration = resultant_force / mass;
+        float friction = -velocity;
+        forces += friction;
+
+        float acceleration = forces / mass;
 
         velocity += acceleration * timestep;
 
@@ -238,23 +150,115 @@ public:
         pos += Vec3( 0, velocity * timestep, 0 );
 
         std::cout << std::endl;
+
+        forces = 0;
     }
 
     void accelerate()
     {
-        wheel.apply_torque(20.0f);
+        forces += 5.0f;
     }
 
     void brake()
     {
-        wheel.apply_torque(-5.0f);
+        forces -= 2.0f;
     }
 
 private:
-    Wheel wheel;
     float mass;
-
     float velocity;
+    float forces;
+};
+
+
+class Car2D : public Object {
+public:
+    Car2D( Vec3 p, Vec3 d )
+    :   Object( p, d, 10.0f, Purple ),
+        mass( 5.0f ), // kg
+        velocity( 0,0,0 ),
+        forces( 0,0,0 )
+    {
+        inertia = 0.8f * mass * dimensions.magnitude_squared();
+    }
+
+    Vec3 forward_unit_vector()
+    {
+        return Vec3( sin( deg_to_rad * angle ), cos( deg_to_rad * angle ), 0 );
+    }
+
+    void apply_drag()
+    {
+        float drag_coefficient = 0.4f;
+        float rr_coefficient = 12.8f;
+        Vec3 drag = ( drag_coefficient * velocity.magnitude() * -velocity );
+        Vec3 rr = ( rr_coefficient * -velocity );
+
+        forces += drag + rr;
+    }
+
+    void update( float timestep )
+    {
+        apply_drag();
+
+        // calculate Vcar
+        Vec3 acceleration = forces / mass;
+        velocity += acceleration * timestep;
+        pos += velocity * timestep;
+
+        draw_vector( pos, acceleration, Blue );
+
+        std::cout << "Acceleration: ";
+        threshold_print( std::cout, 0.001f, acceleration.magnitude(), "Constant Velocity" ) << std::endl;
+        std::cout << "Velocity: ";
+        threshold_print( std::cout, 0.001f, velocity.magnitude(),     "Stopped." ) << std::endl;
+
+        // calculate AVcare
+        angular_velocity *= 0.9f;
+        angle += angular_velocity * timestep;
+
+        std::cout << "Angular Velocity: ";
+        threshold_print( std::cout, 0.001f, angular_velocity,     "Rotation Stopped." ) << std::endl;
+
+        std::cout << std::endl;
+
+        forces = Vec3(0,0,0);
+        torques = 0;
+    }
+
+    void accelerate()
+    {
+        forces += forward_unit_vector() * 80.0f;
+    }
+
+    void brake()
+    {
+        forces += forward_unit_vector() * -20.0f;
+    }
+
+    void steer( float angular_acceleration )
+    {
+        float cos_angle_between_facing_and_velocity = ( forward_unit_vector().dot( velocity ));
+        angular_velocity += angular_acceleration * std::max( 0.1f, cos_angle_between_facing_and_velocity );
+        //angular_velocity += angular_acceleration * velocity.magnitude();
+    }
+
+    virtual void draw()
+    {
+        Object::draw();
+
+        draw_vector( pos, velocity, Green );
+      //  draw_vector( pos, forces, Red );
+    }
+
+private:
+    float mass;
+    Vec3 velocity;
+    Vec3 forces;
+
+    float inertia;
+    float angular_velocity;
+    float torques;
 };
 
 

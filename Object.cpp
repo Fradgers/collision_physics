@@ -30,6 +30,15 @@ GLfloat colors[COLOR_COUNT][3] = {
     { 1,0,1 },
 };
 
+void draw_vector( const Vec3& p, const Vec3& v, Color color )
+{
+    glColor3fv( colors[ color ] );
+    glBegin( GL_LINE_LOOP );
+        glVertex3f( p.x, p.y, p.z );
+        glVertex3f( p.x + v.x, p.y + v.y, p.z + v.z );
+    glEnd();
+}
+
 bool project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices )
 {
     // for both axes of this OBB
@@ -90,7 +99,7 @@ void Object::draw() const
     glPushMatrix();
 
     glTranslatef( position().x, position().y, position().z );
-    glRotatef( angle, 0,0,1 );
+    glRotatef( angle, 0,0,-1 );
 
     glColor3fv( colors[ color ] );
     glBegin( GL_QUADS );
@@ -106,10 +115,9 @@ void Object::draw() const
 Collision_Volume Object::collision_volume()
 {
     std::vector<Vec3> vertices;
-    //angle += 0.003f;
 
-    Vec3 X( cos( deg_to_rad * angle ), sin( deg_to_rad * angle ), 0 );
-    Vec3 Y( -sin( deg_to_rad * angle ), cos( deg_to_rad * angle ), 0 );
+    Vec3 X( cos( deg_to_rad * angle ), -sin( deg_to_rad * angle ), 0 );
+    Vec3 Y( sin( deg_to_rad * angle ), cos( deg_to_rad * angle ), 0 );
 
     X *= dimensions.x / 2;
     Y *= dimensions.y / 2;
@@ -118,16 +126,6 @@ Collision_Volume Object::collision_volume()
     vertices.push_back( position() + X - Y );
     vertices.push_back( position() + X + Y );
     vertices.push_back( position() - X + Y );
-
-    /*glPushMatrix();
-
-    glColor3fv( colors[ Blue ] );
-    glBegin( GL_LINE_LOOP );
-        BOOST_FOREACH( const Vec3& vertex, vertices )
-            glVertex3f( vertex.x, vertex.y, -19.8f );
-    glEnd();
-
-    glPopMatrix();*/
 
     std::vector<Axis> axes;
 
@@ -146,7 +144,6 @@ void Block::draw() const
     glPushMatrix();
 
     glTranslatef( position().x, position().y, position().z );
-    //glRotatef( -angle, 0,0,1 );
 
     glColor3fv( colors[ color ] );
     glBegin( GL_QUADS );
@@ -170,16 +167,6 @@ Collision_Volume Block::collision_volume()
     vertices.push_back( position() + Vec3( -w2, h2, 0 ));
     vertices.push_back( position() + Vec3( w2, h2, 0 ));
     vertices.push_back( position() + Vec3( w2, -h2, 0 ));
-
-    /*glPushMatrix();
-
-    glColor3fv( colors[ Green ] );
-    glBegin( GL_LINE_LOOP );
-        BOOST_FOREACH( const Vec3& vertex, vertices )
-            glVertex3f( vertex.x, vertex.y, -19.8f );
-    glEnd();
-
-    glPopMatrix();*/
 
     std::vector<Axis> axes;
 

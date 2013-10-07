@@ -15,7 +15,7 @@ int main( int argc, char** argv )
     using namespace boost::assign;
 
     Object obj( Vec3( 0, 0, depth ), Vec3( 2, 2, 0 ), 30.0f, Red );
-    UniCar car( Vec3( 4, 0, depth ), Vec3( 1, 5, 0 ) );
+    Car2D car( Vec3( 4, 0, depth ), Vec3( 1, 3, 0 ) );
 
     while ( ! glfwGetKey( GLFW_KEY_ESC ) )
     {
@@ -28,11 +28,20 @@ int main( int argc, char** argv )
 
         if ( glfwGetKey( GLFW_KEY_UP )) { std::cout << "Accelerating." << std::endl; car.accelerate(); }
         if ( glfwGetKey( GLFW_KEY_DOWN )) { std::cout << "Braking." << std::endl; car.brake(); }
-        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.move_by( Vec3( 0.01f, 0, 0 ));
-        if ( glfwGetKey( GLFW_KEY_LEFT )) car.move_by( Vec3( -0.01f, 0, 0 ));
+        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(5.75f);
+        if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-5.75f);
 
         obj.draw();
         car.draw();
+
+        if ( obj.collision_volume().intersects(
+            car.collision_volume()
+        ))
+        {
+            obj.collision_volume().draw();
+            car.collision_volume().draw();
+//                    std::cout << " " << a << " " << b;
+        }
 
         glfwSwapBuffers();
     }
