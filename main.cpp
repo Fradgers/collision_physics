@@ -14,13 +14,8 @@ int main( int argc, char** argv )
 
     using namespace boost::assign;
 
-    std::vector< ICollidable* > objects;
-    objects +=
-        new Block( Vec3( 4, 0, depth ), Vec3( 1, 5, 0 ), Blue ),
-        new Object( Vec3( 0, 0, depth ), Vec3( 2, 2, 0 ), 30.0f, Red ),
-        new Object( Vec3( 2, 0, depth ), Vec3( 3, 1, 0 ), 45.0f, Green ),
-        new Block( Vec3( 1, -2.5f, depth ), Vec3( 2, 2, 0 ), Red )
-    ;
+    Object obj( Vec3( 0, 0, depth ), Vec3( 2, 2, 0 ), 30.0f, Red );
+    UniCar car( Vec3( 4, 0, depth ), Vec3( 1, 5, 0 ) );
 
     while ( ! glfwGetKey( GLFW_KEY_ESC ) )
     {
@@ -29,32 +24,16 @@ int main( int argc, char** argv )
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity();
 
-        for ( unsigned int a = 0; a != objects.size(); ++a )
-            for ( unsigned int b = a+1; b != objects.size(); ++b )
-            {
-                if ( objects[ a ]->collision_volume().intersects(
-                    objects[ b ]->collision_volume()
-                ))
-                {
-                    objects[ a ]->collision_volume().draw();
-                    objects[ b ]->collision_volume().draw();
-//                    std::cout << " " << a << " " << b;
-                }
- //                std::cout << std::endl;
-            }
+        car.update(0.01f);
 
-        BOOST_FOREACH( const ICollidable* obj, objects )
-            obj->draw();
+        if ( glfwGetKey( GLFW_KEY_UP )) { std::cout << "Accelerating." << std::endl; car.accelerate(); }
+        if ( glfwGetKey( GLFW_KEY_DOWN )) { std::cout << "Braking." << std::endl; car.brake(); }
+        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.move_by( Vec3( 0.01f, 0, 0 ));
+        if ( glfwGetKey( GLFW_KEY_LEFT )) car.move_by( Vec3( -0.01f, 0, 0 ));
 
-        if ( glfwGetKey( GLFW_KEY_UP )) objects[0]->move_by( Vec3( 0, 0.01f, 0 ));
-        if ( glfwGetKey( GLFW_KEY_DOWN )) objects[0]->move_by( Vec3( 0, -0.01f,0 ));
-        if ( glfwGetKey( GLFW_KEY_RIGHT )) objects[0]->move_by( Vec3( 0.01f, 0, 0 ));
-        if ( glfwGetKey( GLFW_KEY_LEFT )) objects[0]->move_by( Vec3( -0.01f, 0, 0 ));
+        obj.draw();
+        car.draw();
 
         glfwSwapBuffers();
     }
-
-    BOOST_FOREACH( const ICollidable* obj, objects )
-        delete obj;
-
 }

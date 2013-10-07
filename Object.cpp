@@ -1,10 +1,33 @@
 #include "Object.h"
 
+std::ostream& threshold_print( std::ostream& stream, float delta, float value, const std::string& message )
+{
+    if ( value < delta && value > -delta )
+    {
+        if ( value > 0 ) std::cout << '+';
+        if ( value < 0 ) std::cout << '-';
+        stream << message << std::flush;
+    }
+    else
+    {
+        std::fixed( std::cout );
+        stream << std::setprecision(2) << value << std::flush;
+    }
+
+    return stream;
+}
+
+std::ostream& threshold_print( std::ostream& stream,  float delta, float value )
+{
+    return threshold_print( stream, delta, value, "NEG" );
+}
+
 GLfloat colors[COLOR_COUNT][3] = {
     { 1,1,1 },
     { 1,0,0 },
     { 0,1,0 },
     { 0,0,1 },
+    { 1,0,1 },
 };
 
 bool project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices )
@@ -83,7 +106,7 @@ void Object::draw() const
 Collision_Volume Object::collision_volume()
 {
     std::vector<Vec3> vertices;
-    angle += 0.003f;
+    //angle += 0.003f;
 
     Vec3 X( cos( deg_to_rad * angle ), sin( deg_to_rad * angle ), 0 );
     Vec3 Y( -sin( deg_to_rad * angle ), cos( deg_to_rad * angle ), 0 );
