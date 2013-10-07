@@ -24,6 +24,8 @@ public:
         min_extent( std::numeric_limits<float>::max() ),
         max_extent( -min_extent )
     {
+        dir.normalise();
+
         for ( unsigned int p = 0; p != points.size(); ++p )
         {
             float e = extent( points[ p ] );
@@ -48,7 +50,7 @@ public:
 
     void print() const
     {
-//        std::cout << dir << " Min: " << min() << " Max: " << max() << std::endl;
+        //std::cout << "Axis:" << dir << " Min:" << min() << " Max:" << max() << std::endl;
     }
 
 private:
@@ -85,16 +87,32 @@ public:
     CollisionManifold intersects( const Collision_Volume& other )
     {
         // perform seperating axes algorithm on volumes
+        std::cout << "Checking car's vertices against object's axes" << std::endl;
         CollisionManifold manifoldA = project( axes, other.vertices );
+        std::cout << "Checking object's vertices against car's axes" << std::endl;
         CollisionManifold manifoldB = project( other.axes, vertices );
 
         if ( manifoldA.collision_detected && manifoldB.collision_detected )
         {
             // return the collision manifold with the least penetration
-            return ( manifoldA.depth < manifoldB.depth ) ? manifoldA : manifoldB;
+            if ( std::abs(manifoldA.depth) < std::abs(manifoldB.depth) )
+            {
+                std::cout << "LeastPen: Normal:" << manifoldA.normal << " Depth:" << manifoldA.depth << std::endl;
+                return manifoldA;
+            }
+            else
+            {
+                // normal reversed if a vertex of object This has intersected object Other
+                manifoldB.normal = -manifoldB.normal;
+                std::cout << "LeastPen: Normal:" << manifoldB.normal << " Depth:" << manifoldB.depth << std::endl;
+                return manifoldB;
+            }
         }
         else
+        {
+            std::cout << "intersects: No collision." << std::endl;
             return CollisionManifold();
+        }
     }
 
     void draw() const;
@@ -274,7 +292,7 @@ public:
     Car2D( Vec3 p, Vec3 d )
     :   Object( p, d, 0.0f, Purple ),
         mass( 1500.0f ), // kg
-        velocity( 0.9f,1.3f,0 ),
+        velocity( 0.0f,0.0f,0 ),
         forces( 0,0,0 )
     {
         angular_velocity = 0;
@@ -471,16 +489,18 @@ public:
 
     void resolve_collision( CollisionManifold manifold )
     {
-        if ( manifold.collision_detected == false )
-            return;
+        if ( manifold.collision_detected == true )
+        {
+            // correct car position such that it no longer intersects the collided object
+            Vec3 position_correction = manifold.normal * manifold.depth;
+            pos += position_correction;
 
-        Vec3 position_correction = -manifold.normal * manifold.depth;
-        pos += position_correction;
+            // apply wall friction and collision elasticity coefficients to get new velocity
+            Vec3 velocity_parallel_to_normal = velocity.dot( manifold.normal ) * manifold.normal;
+            Vec3 velocity_perpendicular_to_normal = velocity - velocity_parallel_to_normal;
 
-        Vec3 velocity_parallel_to_normal = velocity.dot( manifold.normal ) * manifold.normal;
-        Vec3 velocity_perpendicular_to_normal = velocity - velocity_parallel_to_normal;
-
-        velocity = 0.4f * velocity_perpendicular_to_normal - velocity_parallel_to_normal;
+            velocity = (0.9f * velocity_perpendicular_to_normal) + (-0.4f * velocity_parallel_to_normal);
+        }
     }
 
     virtual void draw()

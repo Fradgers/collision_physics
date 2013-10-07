@@ -78,17 +78,29 @@ CollisionManifold project( const std::vector<Axis>& axes, const std::vector<Vec3
             ( max_extent < axes[ axis ].min() )
         )
         {
+            std::cout << "No overlap - no collision." << std::endl;
             return CollisionManifold();
         }
 
-        float depth = std::min( std::abs( min_extent - axes[ axis ].max()), std::abs( max_extent - axes[ axis ].min()));
-        if ( depth < collision_depth ) {
-            collision_depth = depth;
+        float depthA = axes[ axis ].max() - min_extent;
+        float depthB = axes[ axis ].min() - max_extent;
+
+        std::cout << "Depths: A(" << depthA << ") B(" << depthB << ")" << std::endl;
+
+        // check if depthA or depthB is the smallest collision depth so far
+        if ( std::abs(depthA) < std::abs(collision_depth) )
+        {
+            collision_depth = depthA;
             collision_normal = axes[ axis ].direction().normalise();
         }
 
-        //std::cout << std::endl << std::endl;
+        if ( std::abs(depthB) < std::abs(collision_depth) )
+        {
+            collision_depth = depthB;
+            collision_normal = axes[ axis ].direction().normalise();
+        }
     }
+    std::cout << "Normal:" << collision_normal << " Depth:" << collision_depth << std::endl;
 
     return CollisionManifold( collision_normal, collision_depth );
 }

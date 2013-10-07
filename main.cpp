@@ -6,6 +6,7 @@ const GLfloat depth = -30.0f;
 #include <boost/assign/std/vector.hpp>
 #include <boost/foreach.hpp>
 #include <iostream>
+#include <assert.h>
 
 /**
     power_weight_ratio
@@ -30,8 +31,8 @@ int main( int argc, char** argv )
 
     using namespace boost::assign;
 
-    Object obj( Vec3( 0, 0, depth ), Vec3( 2, 4, 0 ), 30.0f, Red );
-    Car2D car( Vec3( -1.0f, -1, depth ), Vec3( 1, 3, 0 ) );
+    Object obj( Vec3( 3, 0, depth ), Vec3( 4, 5, 0 ), 45.0f, Red );
+    Car2D car( Vec3( 0.0f, -0.1f, depth ), Vec3( 1, 2, 0 ) );
 
     std::vector<Vec3> positions;
 
@@ -47,13 +48,14 @@ int main( int argc, char** argv )
         obj.draw();
         car.draw();
         car.update(0.05f);
+        std::cout << "Car position:" << car.position() << std::endl;
 
         //std::cout << "\n************************************" << std::endl;
 
         if ( glfwGetKey( GLFW_KEY_UP )) { std::cout << "Accelerating." << std::endl; car.accelerate(); }
         if ( glfwGetKey( GLFW_KEY_DOWN )) { std::cout << "Braking." << std::endl; car.brake(); }
-        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(5.0f);
-        if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-5.0f);
+        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(3.0f);
+        if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-3.0f);
 
         if ( glfwGetKey( GLFW_KEY_SPACE ))
             car.handbrake( true );
@@ -83,6 +85,10 @@ int main( int argc, char** argv )
             obj.collision_volume().draw();
             car.collision_volume().draw();
         }
+        else
+            std::cout << "No collision." << std::endl;
+
+        std::cout << std::endl;
 
         glfwSwapBuffers();
     }
