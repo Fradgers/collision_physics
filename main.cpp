@@ -1,11 +1,27 @@
 #include "Object.h"
 
-const GLfloat depth = -20.0f;
+const GLfloat depth = -50.0f;
 
 #include <vector>
 #include <boost/assign/std/vector.hpp>
 #include <boost/foreach.hpp>
 #include <iostream>
+
+/**
+    power_weight_ratio
+    maximum_thrust
+    maximum_brake
+
+    steering_rate
+    steering_lock
+
+    mass
+
+    rolling_friction_coefficient
+    lateral_friction_coefficient
+    drag_coefficient
+*/
+
 
 int main( int argc, char** argv )
 {
@@ -34,8 +50,13 @@ int main( int argc, char** argv )
 
         if ( glfwGetKey( GLFW_KEY_UP )) { std::cout << "Accelerating." << std::endl; car.accelerate(); }
         if ( glfwGetKey( GLFW_KEY_DOWN )) { std::cout << "Braking." << std::endl; car.brake(); }
-        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(2.0f);
-        if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-2.0f);
+        if ( glfwGetKey( GLFW_KEY_RIGHT )) car.steer(5.0f);
+        if ( glfwGetKey( GLFW_KEY_LEFT )) car.steer(-5.0f);
+
+        if ( glfwGetKey( GLFW_KEY_SPACE ))
+            car.handbrake( true );
+        else
+            car.handbrake( false );
 
 
         positions.push_back( car.position() );
@@ -45,7 +66,7 @@ int main( int argc, char** argv )
         glColor3f( 1.0f, 1.0f, 1.0f );
         glBegin( GL_LINES );
             BOOST_FOREACH( const Vec3& position, positions )
-                glVertex3f( position.x, position.y, -19.9f );
+                glVertex3f( position.x, position.y, depth );
         glEnd();
 
         glPopMatrix();

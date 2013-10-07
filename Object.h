@@ -15,6 +15,8 @@ void draw_vector( const Vec3& p, const Vec3& v, Color color = White );
 #include <limits>
 #include <iostream>
 #include <cmath>
+#include <boost/foreach.hpp>
+
 class Axis {
 public:
     Axis( const Vec3& d, const std::vector<Vec3>& points )
@@ -188,38 +190,40 @@ public:
     {
         if ( can_steer )
             angle = steer + car_angle;
+        else
+            angle = car_angle;
     }
 
-    Vec3 forward_unit_vector(   )
+    Vec3 forward_unit_vector()
     {
         float wheel_world_angle = angle;
         return Vec3( sin( deg_to_rad * wheel_world_angle ), cos( deg_to_rad * wheel_world_angle ), 0 );
     }
 
-    Vec3 lateral_unit_vector(   )
+    Vec3 lateral_unit_vector()
     {
         float wheel_world_angle = angle;
         return Vec3( cos( deg_to_rad * wheel_world_angle ), -sin( deg_to_rad * wheel_world_angle ), 0 );
     }
 
-    Vec3 velocity_forward_component( Vec3 car_velocity  )
+    Vec3 velocity_forward_component( Vec3 car_velocity )
     {
-        return forward_speed( car_velocity ) * forward_unit_vector(  );
+        return forward_speed( car_velocity ) * forward_unit_vector();
     }
 
-    Vec3 velocity_lateral_component( Vec3 car_velocity  )
+    Vec3 velocity_lateral_component( Vec3 car_velocity )
     {
-        return lateral_speed( car_velocity ) * lateral_unit_vector(  );
+        return lateral_speed( car_velocity ) * lateral_unit_vector();
     }
 
-    float forward_speed( Vec3 car_velocity  )
+    float forward_speed( Vec3 car_velocity )
     {
-        return car_velocity.dot( forward_unit_vector(  ));
+        return car_velocity.dot( forward_unit_vector());
     }
 
-    float lateral_speed( Vec3 car_velocity  )
+    float lateral_speed( Vec3 car_velocity )
     {
-        return car_velocity.dot( lateral_unit_vector(  ));
+        return car_velocity.dot( lateral_unit_vector());
     }
 
     /*Vec3 calculate_velocity( Vec3 car_velocity, float car_angular_velocity )
@@ -230,6 +234,7 @@ public:
     }*/
 
     Steerable can_steer;
+    bool brake_lock;
     float angle;
     Vec3 offset;
 };
@@ -238,18 +243,18 @@ class Car2D : public Object {
 public:
     Car2D( Vec3 p, Vec3 d )
     :   Object( p, d, 0.0f, Purple ),
-        mass( 500.0f ), // kg
-        velocity( -1.9f,1.3f,0 ),
+        mass( 1500.0f ), // kg
+        velocity( -8.9f,1.3f,0 ),
         forces( 0,0,0 )
     {
         angular_velocity = 0;
         torques = 0;
         steering_angle = 0;
 
-        inertia = 0.1f * mass * dimensions.magnitude_squared();
+        inertia = 0.8f * mass * dimensions.magnitude_squared();
 
-        wheels.push_back( Wheel( Steer,    d * Vec3( -0.0f, 0.5f, 0 )));
-        wheels.push_back( Wheel( Steer,    d * Vec3(  0.5f, 0.5f, 0 )));
+        wheels.push_back( Wheel( Steer,    d * Vec3( -0.5f,  0.5f, 0 )));
+        wheels.push_back( Wheel( Steer,    d * Vec3(  0.5f,  0.5f, 0 )));
         wheels.push_back( Wheel( No_Steer, d * Vec3(  0.5f, -0.5f, 0 )));
         wheels.push_back( Wheel( No_Steer, d * Vec3( -0.5f, -0.5f, 0 )));
     }
@@ -291,20 +296,20 @@ public:
         draw_vector( pos, forces, Blue );
         std::cout << "Velocity: " << velocity << std::endl;
 
-        unsigned int wheel_count = 1;
+        unsigned int wheel_count = 4;
 
         /// for each wheel
         for ( unsigned int w = 0; w != wheel_count; ++w )
         {
-            /// assuming all wheels are at centre_of_mass of car
             Vec3 wheel_world_position = pos + (wheels[ w ].offset.x - 0.0f) * lateral_unit_vector() + (wheels[ w ].offset.y - 0.0f) * forward_unit_vector();
 
             // distances from centre of mass
-            Vec3 centre_of_mass_to_wheel = wheel_world_position - pos;//wheels[ w ].offset;
+            Vec3 centre_of_mass_to_wheel = wheel_world_position - pos;
             Vec3 rotation_tangent( centre_of_mass_to_wheel.y, -centre_of_mass_to_wheel.x, 0 );
             rotation_tangent.normalise();
 
             wheels[ w ].apply_steering( steering_angle, angle_degrees );
+            //draw_vector( wheel_world_position, 10.0f * wheels[ w ].forward_unit_vector(), White );
 
             ///    use car velocity & car angular velocity to
             ///        calculate wheel velocity
@@ -313,33 +318,34 @@ public:
             Vec3 wheel_velocity = velocity;
 
             // except when car is also rotating
-            wheel_velocity = velocity + (rotation_tangent * angular_velocity * centre_of_mass_to_wheel.magnitude());
-        /*    draw_vector( wheel_world_position, 10.0f * rotation_tangent * angular_velocity * centre_of_mass_to_wheel.magnitude(), Green );
+            wheel_velocity += (rotation_tangent * angular_velocity * centre_of_mass_to_wheel.magnitude());
 
-           // float wheel_velocity_angle = wheels[ w ].angle;
+           // draw_vector( pos, velocity, Green );
+            draw_vector( wheel_world_position, wheel_velocity * 5, Yellow );
 
-      //      if ( wheel_velocity.magnitude_squared() != 0.0f )
-        //        wheel_velocity_angle = acos( deg_to_rad * wheel_velocity.dot( Vec3( 0,1,0 )) / wheel_velocity.magnitude() );
-
-            draw_vector( pos, velocity * 10.0f, Green );
-            draw_vector( wheel_world_position, 10.0f*wheel_velocity, Yellow );
-*/
             ///    use wheel velocity & steering angle to
             ///        calculate wheel forces
 
             // assume the wheels share the load of the car body equally
             float load = mass / wheel_count;
-            Vec3 F_lat_wheel = 1.2f * load * -wheels[w].velocity_lateral_component( wheel_velocity ) ;///* tyre_lateral_resistance( wheel_velocity_angle - wheels[ w ].angle + angle, 9.8f * mass / wheel_count );
+            float friction_coefficient = 0.7f;
+            float rr_coefficient = 0.015f;
 
-            // calculate rolling resistance on wheel
-            float rr_coefficient = 120.8f;
-            Vec3 F_long_wheel = rr_coefficient * -wheels[w].velocity_forward_component( wheel_velocity );
+            // FIXME: wheel velocity magnitude technically incorrect here - should be normalised,
+            // but doing so gives bad behaviour
+            Vec3 F_lat_wheel = friction_coefficient * load * 9.98 * -wheels[w].velocity_lateral_component( wheel_velocity );
+            Vec3 F_long_wheel = rr_coefficient * load * 9.98 * -wheels[w].velocity_forward_component( wheel_velocity );
+
+            /// testing locked back wheels
+            //if ( wheels[ w ].brake_lock )
+                //F_lat_wheel /= load;
+
 
       //      draw_vector( wheel_world_position, tyre_forward_unit_vector, White );
        //     draw_vector( wheel_world_position, Vec3(1,0,0), Cyan );
-            draw_vector( wheel_world_position, F_lat_wheel, Red );
-            draw_vector( wheel_world_position, F_long_wheel, Red );
-          ///  draw_vector( wheel_world_position, (F_long_wheel+F_lat_wheel), Orange );
+          //  draw_vector( wheel_world_position, F_lat_wheel, Red );
+          //  draw_vector( wheel_world_position, F_long_wheel, Red );
+            ///draw_vector( wheel_world_position, (F_long_wheel + F_lat_wheel), Red );
 
             std::cout << "Velocity (x,y): " << velocity << std::endl;
             std::cout << "Friction (lat,long): " << F_lat_wheel << ", " << F_long_wheel << std::endl;
@@ -349,29 +355,27 @@ public:
             forces += F_lat_wheel;
             forces += F_long_wheel;
 
-            draw_vector( pos, forces, Blue );
       ///      draw_vector( wheel_world_position, 10.0f*rotation_tangent, White );
 
             /// apply the wheel's forces to the torque of the car body
             float rotational_force_magnitude = rotation_tangent.dot( F_lat_wheel + F_long_wheel );
 
             torques += rotational_force_magnitude * centre_of_mass_to_wheel.magnitude();
-                        draw_vector( wheel_world_position, 10.0f * (rotation_tangent * angular_velocity * centre_of_mass_to_wheel.magnitude()), Orange );
+            ///draw_vector( wheel_world_position, 10.0f * (rotation_tangent * angular_velocity * centre_of_mass_to_wheel.magnitude()), Orange );
 
-           // float wheel_velocity_angle = wheels[ w ].angle;
-
-      //      if ( wheel_velocity.magnitude_squared() != 0.0f )
-        //        wheel_velocity_angle = acos( deg_to_rad * wheel_velocity.dot( Vec3( 0,1,0 )) / wheel_velocity.magnitude() );
-
-            draw_vector( pos, velocity * 10.0f, Green );
-            draw_vector( wheel_world_position, 10.0f*wheel_velocity, Yellow );
+            /// draw velocities
+            draw_vector( pos, velocity, Green );
+            draw_vector( wheel_world_position, wheel_velocity, Yellow );
         }
 
-        draw_vector( pos + forward_unit_vector(), torques * lateral_unit_vector(), Cyan );
+        /// draw torque
+        ///draw_vector( pos + forward_unit_vector(), torques * lateral_unit_vector(), Cyan );
         draw_vector( pos + forward_unit_vector(), forward_unit_vector(), White );
 
         ///  apply drag, drive & external forces to car forces & car torque
         apply_drag();
+
+        ///draw_vector( pos, forces, Blue );
 
         ///  use car forces to calculate new car velocity
         Vec3 acceleration = forces / mass;
@@ -400,12 +404,26 @@ public:
 
     void accelerate()
     {
-        forces += forward_unit_vector() * 800.0f;
+        // thrust = (P:W) * mass * grav / velocity
+        float thrust = std::min( 1856340.0f / velocity.magnitude(), 30000.0f );
+
+        // alternative: thrust = (T:W) * mass
+
+        forces += forward_unit_vector() * thrust;
     }
 
     void brake()
     {
-        forces += forward_unit_vector() * -200.0f;
+        forces += forward_unit_vector() * -2000.0f;
+    }
+
+    void handbrake( bool locked )
+    {
+        BOOST_FOREACH( Wheel wheel, wheels )
+        {
+            if ( ! wheel.can_steer )
+                wheel.brake_lock = locked;
+        }
     }
 
     void steer( float steering_change )
