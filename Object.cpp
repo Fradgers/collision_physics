@@ -44,8 +44,14 @@ void draw_vector( const Vec3& p, const Vec3& vec, Color color )
     glEnd();
 }
 
-bool project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices )
+
+
+
+CollisionManifold project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices )
 {
+    Vec3 collision_normal;
+    float collision_depth = 0x3f800000;
+
     // for both axes of this OBB
     for ( unsigned int axis = 0; axis != axes.size(); ++axis )
     {
@@ -72,13 +78,19 @@ bool project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices )
             ( max_extent < axes[ axis ].min() )
         )
         {
-            std::cout << "No Collision." << std::endl;
-            return false;
+            return CollisionManifold();
         }
+
+        float depth = std::min( std::abs( min_extent - axes[ axis ].max()), std::abs( max_extent - axes[ axis ].min()));
+        if ( depth < collision_depth ) {
+            collision_depth = depth;
+            collision_normal = axes[ axis ].direction().normalise();
+        }
+
+        //std::cout << std::endl << std::endl;
     }
 
-    std::cout << "COLLISION!!" << std::endl;
-    return true;
+    return CollisionManifold( collision_normal, collision_depth );
 }
 
 #include <boost/foreach.hpp>
@@ -89,7 +101,7 @@ void Collision_Volume::draw() const
     glColor3fv( colors[ White ] );
     glBegin( GL_LINE_LOOP );
         BOOST_FOREACH( const Vec3& vertex, vertices )
-            glVertex3f( vertex.x, vertex.y, -19.9f );
+            glVertex3f( vertex.x, vertex.y, -28.5f );
     glEnd();
 
     glPopMatrix();
@@ -184,7 +196,6 @@ Collision_Volume Block::collision_volume()
 
 float tyre_lateral_resistance( float angle_degrees, float weight_newtons )
 {
-   // std::cout << "angle_degrees: " << angle_degrees << std::endl;
     if ( angle_degrees <= 3.0f && angle_degrees >= -3.0f )
     {
         return angle_degrees * 0.4f * weight_newtons;

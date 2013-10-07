@@ -1,6 +1,6 @@
 #include "Object.h"
 
-const GLfloat depth = -50.0f;
+const GLfloat depth = -30.0f;
 
 #include <vector>
 #include <boost/assign/std/vector.hpp>
@@ -30,8 +30,8 @@ int main( int argc, char** argv )
 
     using namespace boost::assign;
 
-    Object obj( Vec3( 0, 0, depth ), Vec3( 2, 2, 0 ), 30.0f, Red );
-    Car2D car( Vec3( -2, -2, depth ), Vec3( 1, 3, 0 ) );
+    Object obj( Vec3( 0, 0, depth ), Vec3( 2, 4, 0 ), 30.0f, Red );
+    Car2D car( Vec3( -1.0f, -1, depth ), Vec3( 1, 3, 0 ) );
 
     std::vector<Vec3> positions;
 
@@ -42,11 +42,13 @@ int main( int argc, char** argv )
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity();
 
+        //std::cout << "Car initial position: " << car.position() << std::endl << std::endl;
+
         obj.draw();
         car.draw();
-        car.update(0.01f);
+        car.update(0.05f);
 
-        std::cout << "\n************************************" << std::endl;
+        //std::cout << "\n************************************" << std::endl;
 
         if ( glfwGetKey( GLFW_KEY_UP )) { std::cout << "Accelerating." << std::endl; car.accelerate(); }
         if ( glfwGetKey( GLFW_KEY_DOWN )) { std::cout << "Braking." << std::endl; car.brake(); }
@@ -71,18 +73,17 @@ int main( int argc, char** argv )
 
         glPopMatrix();
 
-        if ( obj.collision_volume().intersects(
-            car.collision_volume()
-        ))
+        CollisionManifold collision = obj.collision_volume().intersects( car.collision_volume());
+
+        if ( collision.collision_detected )
         {
+            std::cout << "COLLISION!!" << std::endl;
+            draw_vector(car.position(), collision.normal * collision.depth, Red);
+            car.resolve_collision( collision );
             obj.collision_volume().draw();
             car.collision_volume().draw();
-//                    std::cout << " " << a << " " << b;
         }
 
         glfwSwapBuffers();
     }
-
-    ///while ( ! glfwGetKey( GLFW_KEY_SPACE ) )
-    { ; }
 }

@@ -20,7 +20,7 @@ void draw_vector( const Vec3& p, const Vec3& v, Color color = White );
 class Axis {
 public:
     Axis( const Vec3& d, const std::vector<Vec3>& points )
-    :   direction(d),
+    :   dir(d),
         min_extent( std::numeric_limits<float>::max() ),
         max_extent( -min_extent )
     {
@@ -38,22 +38,42 @@ public:
 
     float extent( const Vec3& point ) const
     {
-        return direction.dot( point );
+        return dir.dot( point );
+    }
+
+    Vec3 direction() const
+    {
+        return dir;
     }
 
     void print() const
     {
-//        std::cout << direction << " Min: " << min() << " Max: " << max() << std::endl;
+//        std::cout << dir << " Min: " << min() << " Max: " << max() << std::endl;
     }
 
 private:
-    Vec3 direction;
+    Vec3 dir;
     float min_extent;
     float max_extent;
 };
 
+class CollisionManifold {
+public:
+    CollisionManifold() {
+        collision_detected = false;
+        depth = 0.0f;
+    }
 
-bool project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices );
+    CollisionManifold(Vec3 n, float d)
+    : normal(n), depth(d)
+    { collision_detected = true; }
+
+    bool collision_detected;
+    Vec3 normal;
+    float depth;
+};
+
+CollisionManifold project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices );
 
 
 class Collision_Volume {
@@ -62,9 +82,19 @@ public:
     :   axes(as), vertices(vs)
     { ; }
 
-    bool intersects( const Collision_Volume& other )
+    CollisionManifold intersects( const Collision_Volume& other )
     {
-        return ( project( axes, other.vertices ) && project( other.axes, vertices ));
+        // perform seperating axes algorithm on volumes
+        CollisionManifold manifoldA = project( axes, other.vertices );
+        CollisionManifold manifoldB = project( other.axes, vertices );
+
+        if ( manifoldA.collision_detected && manifoldB.collision_detected )
+        {
+            // return the collision manifold with the least penetration
+            return ( manifoldA.depth < manifoldB.depth ) ? manifoldA : manifoldB;
+        }
+        else
+            return CollisionManifold();
     }
 
     void draw() const;
@@ -244,7 +274,7 @@ public:
     Car2D( Vec3 p, Vec3 d )
     :   Object( p, d, 0.0f, Purple ),
         mass( 1500.0f ), // kg
-        velocity( -8.9f,1.3f,0 ),
+        velocity( 0.9f,1.3f,0 ),
         forces( 0,0,0 )
     {
         angular_velocity = 0;
@@ -274,7 +304,7 @@ public:
         float drag_coefficient = 0.4f;
         Vec3 drag = ( drag_coefficient * velocity.magnitude() * -velocity );
 
-        draw_vector( pos, drag, Orange );
+        //draw_vector( pos, drag, Orange );
 
         forces += drag;
     }
@@ -293,8 +323,8 @@ public:
     ///  store car velocity & car angular velocity for use next frame
     void update( float timestep )
     {
-        draw_vector( pos, forces, Blue );
-        std::cout << "Velocity: " << velocity << std::endl;
+        //draw_vector( pos, forces, Blue );
+        //std::cout << "Velocity: " << velocity << std::endl;
 
         unsigned int wheel_count = 4;
 
@@ -321,7 +351,7 @@ public:
             wheel_velocity += (rotation_tangent * angular_velocity * centre_of_mass_to_wheel.magnitude());
 
            // draw_vector( pos, velocity, Green );
-            draw_vector( wheel_world_position, wheel_velocity * 5, Yellow );
+            //draw_vector( wheel_world_position, wheel_velocity * 5, Yellow );
 
             ///    use wheel velocity & steering angle to
             ///        calculate wheel forces
@@ -347,9 +377,9 @@ public:
           //  draw_vector( wheel_world_position, F_long_wheel, Red );
             ///draw_vector( wheel_world_position, (F_long_wheel + F_lat_wheel), Red );
 
-            std::cout << "Velocity (x,y): " << velocity << std::endl;
-            std::cout << "Friction (lat,long): " << F_lat_wheel << ", " << F_long_wheel << std::endl;
-            std::cout << "Lateral speed: " << wheels[w].lateral_speed( velocity ) << std::endl;
+            //std::cout << "Velocity (x,y): " << velocity << std::endl;
+            //std::cout << "Friction (lat,long): " << F_lat_wheel << ", " << F_long_wheel << std::endl;
+            //std::cout << "Lateral speed: " << wheels[w].lateral_speed( velocity ) << std::endl;
 
             /// apply the wheel's forces to the car body
             forces += F_lat_wheel;
@@ -364,13 +394,13 @@ public:
             ///draw_vector( wheel_world_position, 10.0f * (rotation_tangent * angular_velocity * centre_of_mass_to_wheel.magnitude()), Orange );
 
             /// draw velocities
-            draw_vector( pos, velocity, Green );
-            draw_vector( wheel_world_position, wheel_velocity, Yellow );
+            //draw_vector( pos, velocity, Green );
+            //draw_vector( wheel_world_position, wheel_velocity, Yellow );
         }
 
         /// draw torque
         ///draw_vector( pos + forward_unit_vector(), torques * lateral_unit_vector(), Cyan );
-        draw_vector( pos + forward_unit_vector(), forward_unit_vector(), White );
+        //draw_vector( pos + forward_unit_vector(), forward_unit_vector(), White );
 
         ///  apply drag, drive & external forces to car forces & car torque
         apply_drag();
@@ -380,22 +410,22 @@ public:
         ///  use car forces to calculate new car velocity
         Vec3 acceleration = forces / mass;
         velocity += acceleration * timestep;
-        std::cout << "Velocity: " << velocity.magnitude() << std::endl;
+        //std::cout << "Velocity: " << velocity.magnitude() << std::endl;
         pos += velocity * timestep;
 
-        threshold_print( std::cout, 0.001f, torques ) << " / ";
-        threshold_print( std::cout, 0.001f, inertia ) << " = ";
-        threshold_print( std::cout, 0.001f, torques / inertia ) << std::endl;
+        //threshold_print( std::cout, 0.001f, torques ) << " / ";
+        //threshold_print( std::cout, 0.001f, inertia ) << " = ";
+        //threshold_print( std::cout, 0.001f, torques / inertia ) << std::endl;
 
         ///  use car torque to calculate new car angular velocity
         float angular_acceleration = torques / inertia;
         angular_velocity += angular_acceleration * timestep;
         angle_degrees += rad_to_deg * angular_velocity * timestep;
 
-        std::cout << "Angular Velocity: ";
-        threshold_print( std::cout, 0.001f, angular_velocity,     "Rotation Stopped." ) << std::endl;
+        //std::cout << "Angular Velocity: ";
+        //threshold_print( std::cout, 0.001f, angular_velocity,     "Rotation Stopped." ) << std::endl;
 
-        std::cout << std::endl;
+        //std::cout << std::endl;
 
         ///  store car velocity & car angular velocity for use next frame
         forces = Vec3(0,0,0);
@@ -437,6 +467,20 @@ public:
 
         if ( steering_angle > steering_max )
             steering_angle = steering_max;
+    }
+
+    void resolve_collision( CollisionManifold manifold )
+    {
+        if ( manifold.collision_detected == false )
+            return;
+
+        Vec3 position_correction = -manifold.normal * manifold.depth;
+        pos += position_correction;
+
+        Vec3 velocity_parallel_to_normal = velocity.dot( manifold.normal ) * manifold.normal;
+        Vec3 velocity_perpendicular_to_normal = velocity - velocity_parallel_to_normal;
+
+        velocity = 0.4f * velocity_perpendicular_to_normal - velocity_parallel_to_normal;
     }
 
     virtual void draw()
