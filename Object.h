@@ -4,132 +4,19 @@
 #include "OpenGL.h"
 #include "Vec3.h"
 
+#include "CollisionResolver.h"
+
 
 enum Color { White = 0, Red, Green, Blue, Cyan, Purple, Yellow, Orange, COLOR_COUNT };
 
 void draw_vector( const Vec3& p, const Vec3& v, Color color = White );
 
+#include <iomanip>
+std::ostream& threshold_print( std::ostream& stream, float delta, float value, const std::string& message );
+std::ostream& threshold_print( std::ostream& stream, float delta, float value );
 
 
-#include <vector>
-#include <limits>
-#include <iostream>
-#include <cmath>
-#include <boost/foreach.hpp>
-
-class Axis {
-public:
-    Axis( const Vec3& d, const std::vector<Vec3>& points )
-    :   dir(d),
-        min_extent( std::numeric_limits<float>::max() ),
-        max_extent( -min_extent )
-    {
-        dir.normalise();
-
-        for ( unsigned int p = 0; p != points.size(); ++p )
-        {
-            float e = extent( points[ p ] );
-
-            if ( min_extent > e ) min_extent = e;
-            if ( max_extent < e ) max_extent = e;
-        }
-    }
-
-    float max() const { return max_extent; }
-    float min() const { return min_extent; }
-
-    float extent( const Vec3& point ) const
-    {
-        return dir.dot( point );
-    }
-
-    Vec3 direction() const
-    {
-        return dir;
-    }
-
-    void print() const
-    {
-        //std::cout << "Axis:" << dir << " Min:" << min() << " Max:" << max() << std::endl;
-    }
-
-private:
-    Vec3 dir;
-    float min_extent;
-    float max_extent;
-};
-
-class CollisionManifold {
-public:
-    CollisionManifold() {
-        collision_detected = false;
-        depth = 0.0f;
-    }
-
-    CollisionManifold(Vec3 n, float d)
-    : normal(n), depth(d)
-    { collision_detected = true; }
-
-    bool collision_detected;
-    Vec3 normal;
-    float depth;
-};
-
-CollisionManifold project( const std::vector<Axis>& axes, const std::vector<Vec3>& vertices );
-
-
-class Collision_Volume {
-public:
-    Collision_Volume( const std::vector<Axis>& as, const std::vector<Vec3>& vs )
-    :   axes(as), vertices(vs)
-    { ; }
-
-    CollisionManifold intersects( const Collision_Volume& other )
-    {
-        // perform seperating axes algorithm on volumes
-        std::cout << "Checking car's vertices against object's axes" << std::endl;
-        CollisionManifold manifoldA = project( axes, other.vertices );
-        std::cout << "Checking object's vertices against car's axes" << std::endl;
-        CollisionManifold manifoldB = project( other.axes, vertices );
-
-        if ( manifoldA.collision_detected && manifoldB.collision_detected )
-        {
-            // return the collision manifold with the least penetration
-            if ( std::abs(manifoldA.depth) < std::abs(manifoldB.depth) )
-            {
-                std::cout << "LeastPen: Normal:" << manifoldA.normal << " Depth:" << manifoldA.depth << std::endl;
-                return manifoldA;
-            }
-            else
-            {
-                // normal reversed if a vertex of object This has intersected object Other
-                manifoldB.normal = -manifoldB.normal;
-                std::cout << "LeastPen: Normal:" << manifoldB.normal << " Depth:" << manifoldB.depth << std::endl;
-                return manifoldB;
-            }
-        }
-        else
-        {
-            std::cout << "intersects: No collision." << std::endl;
-            return CollisionManifold();
-        }
-    }
-
-    void draw() const;
-
-private:
-    std::vector<Axis> axes;
-    std::vector<Vec3> vertices;
-};
-
-
-class ICollidable {
-public:
-    virtual Collision_Volume collision_volume();
-    virtual void draw() const;
-    virtual Vec3 position() const;
-    virtual void move_by( const Vec3& vec );
-};
+float tyre_lateral_resistance( float angle_degrees, float weight_newtons );
 
 
 class Object : public ICollidable {
@@ -141,7 +28,10 @@ public:
     virtual Collision_Volume collision_volume();
     virtual void draw() const;
     Vec3 position() const { return pos; }
+    void position( const Vec3& p ) { pos = p; }
     void move_by( const Vec3& vec ) { pos += vec; }
+
+    std::string type_name() const { return "Object"; }
 
 protected:
     Vec3 pos;
@@ -162,67 +52,13 @@ public:
     Vec3 position() const { return pos; }
     void move_by( const Vec3& vec ) { pos += vec; }
 
+    std::string type_name() const { return "Block"; }
+
 private:
     Vec3 pos;
     Vec3 dimensions;
     Color color;
 };
-
-
-#include <iomanip>
-std::ostream& threshold_print( std::ostream& stream, float delta, float value, const std::string& message );
-std::ostream& threshold_print( std::ostream& stream, float delta, float value );
-
-
-class UniCar : public Object {
-public:
-    UniCar( Vec3 p, Vec3 d )
-    :   Object( p, d, 0.0f, Purple ),
-        mass( 5.0f ), // kg
-        velocity( 0 ),
-        forces( 0 )
-    { ; }
-
-    void update( float timestep )
-    {
-        float friction = -velocity;
-        forces += friction;
-
-        float acceleration = forces / mass;
-
-        velocity += acceleration * timestep;
-
-        std::cout << "Acceleration: ";
-        threshold_print( std::cout, 0.001f, acceleration, "Constant Velocity" ) << std::endl;
-
-        std::cout << "Velocity: ";
-        threshold_print( std::cout, 0.001f, velocity,     "Stopped." ) << std::endl;
-
-        pos += Vec3( 0, velocity * timestep, 0 );
-
-        std::cout << std::endl;
-
-        forces = 0;
-    }
-
-    void accelerate()
-    {
-        forces += 5.0f;
-    }
-
-    void brake()
-    {
-        forces -= 2.0f;
-    }
-
-private:
-    float mass;
-    float velocity;
-    float forces;
-};
-
-
-float tyre_lateral_resistance( float angle_degrees, float weight_newtons );
 
 
 enum Steerable { No_Steer = 0, Steer };
@@ -507,6 +343,11 @@ public:
     {
         Object::draw();
     }
+
+    Vec3 get_velocity() { return velocity; }
+    void set_velocity( const Vec3& v ) { velocity = v; }
+
+    std::string type_name() const { return "Car2d"; }
 
 private:
     std::vector<Wheel> wheels;
