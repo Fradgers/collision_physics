@@ -1,6 +1,6 @@
 #include "Object.h"
 
-const GLfloat depth = -30.0f;
+GLfloat depth = 40.0f;
 
 #include <vector>
 #include <boost/assign/std/vector.hpp>
@@ -31,8 +31,11 @@ int main( int argc, char** argv )
     if ( ! opengl.good() ) return -1;
 
     // initialise objects
-    Object obj( Vec3( 3, 0, depth ), Vec3( 4, 5, 0 ), 45.0f, Red );
-    Car2D car( Vec3( 0.0f, -0.1f, depth ), Vec3( 1, 2, 0 ) );
+    Object obj( Vec3( 3, 0, 0.0f ), Vec3( 4, 5, 0 ), 45.0f, Red );
+    Car2D car( Vec3( 0.0f, -0.1f, 0.0f ), Vec3( 1, 2, 0 ) );
+
+    Vec3 camera( 0.0f, 0.0f, depth );
+    GLfloat camera_orientation = 0.0f;
 
     std::vector<Vec3> positions;
 
@@ -48,9 +51,20 @@ int main( int argc, char** argv )
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity();
 
+		// have camera follow car and increase field of view at faster speeds
+        camera_orientation = car.orientation();
+        glRotatef( camera_orientation, 0,0,1.0f );
+
+		depth = std::max( 40.0f, car.get_velocity().magnitude() * 2.0f );
+        camera = car.position() + Vec3( 0.0f, 0.0f, depth ) + car.forward_unit_vector() * 2.0f;
+        glTranslatef( -camera.x, -camera.y, -camera.z );
+
+		// update and draw game objects
         obj.draw();
         car.draw();
         car.update(0.05f);
+
+        car.centre_steering();
 
         // handle input
         if ( glfwGetKey( GLFW_KEY_UP )) { car.accelerate(); }
@@ -70,7 +84,7 @@ int main( int argc, char** argv )
         glColor3f( 1.0f, 1.0f, 1.0f );
         glBegin( GL_LINES );
             BOOST_FOREACH( const Vec3& position, positions )
-                glVertex3f( position.x, position.y, depth );
+                glVertex3f( position.x, position.y, 0.0f );
         glEnd();
         glPopMatrix();
 

@@ -30,6 +30,7 @@ public:
     Vec3 position() const { return pos; }
     void position( const Vec3& p ) { pos = p; }
     void move_by( const Vec3& vec ) { pos += vec; }
+	float orientation() { return angle_degrees; }
 
     std::string type_name() const { return "Object"; }
 
@@ -310,9 +311,19 @@ public:
         }
     }
 
+    void centre_steering()
+    {
+        if ( steering_angle > 1.0f )
+            steering_angle -= 1.0f;
+        else if ( steering_angle < -1.0f )
+            steering_angle += 1.0f;
+        else
+            steering_angle = 0.0f;
+    }
+
     void steer( float steering_change )
     {
-        float steering_max = 60.0f;
+        float steering_max = 50.0f;
 
         steering_angle += steering_change;
 

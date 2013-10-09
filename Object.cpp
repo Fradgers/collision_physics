@@ -113,7 +113,7 @@ void Collision_Volume::draw() const
     glColor3fv( colors[ White ] );
     glBegin( GL_LINE_LOOP );
         BOOST_FOREACH( const Vec3& vertex, vertices )
-            glVertex3f( vertex.x, vertex.y, -28.5f );
+            glVertex3f( vertex.x, vertex.y, -2.0f );
     glEnd();
 
     glPopMatrix();
